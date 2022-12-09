@@ -151,6 +151,26 @@ bool dir_flag_enabled(int flag)
     return false;
 }
 
+//Reads off first cd for / to get and set root directory and current directory
+Directory* get_root_dir()
+{
+    std::ifstream input;
+    input.open("input.txt");
+
+    std::filesystem::path root_name;
+    std::vector<std::string> split_line;
+    for(std::string line; getline(input, line);)
+    {
+        boost::split(split_line, line, boost::is_any_of(" "), boost::token_compress_on);
+        root_name /= split_line[2];
+        root_name = root_name.lexically_normal();
+        return new Directory(root_name);
+    }
+
+    return new Directory("NULL");
+}
+
+
 int main()
 {
     std::ifstream input_text;
@@ -162,7 +182,7 @@ int main()
     int dir_read_flag = 0;
     int root_exists = 0;
 
-    Directory *curr_dir = new Directory("/");
+    Directory *curr_dir = get_root_dir();
     Directory *root_dir = curr_dir;
 
     for(std::string line; getline(input_text, line);)
@@ -230,7 +250,19 @@ int main()
             }
         }
 
+    std::cout << "Curr_dir " << curr_dir->name << std::endl;
+
     } // For: Line in File END
 
+    std::cout << "Curr dir name: " << curr_dir->name << std::endl;
+    std::cout << "Root name: "<< root_dir->name << std::endl;
+    root_dir->list_subdirs();
+    root_dir->list_files();
+
+    std::cout << "Total root size: " << root_dir->get_dir_size() << std::endl;
+
+
     std::cout << "Total dir size under 100000k: " << root_dir->get_dir_sum_limited() << std::endl;
+
+
 }

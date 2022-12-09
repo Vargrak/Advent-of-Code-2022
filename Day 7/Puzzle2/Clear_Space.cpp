@@ -31,6 +31,7 @@ class Directory
 
         //Set inclusive limit for adding dir size to dir sum
         int size_limit = 100000;
+        int deletion_limit = 0;
         std::string name;
         std::vector<Directory> sub_directories;
         std::vector<Files> files;
@@ -134,6 +135,25 @@ class Directory
             }
 
             return this->dir_sum;
+        }
+
+        Directory* get_delete()
+        {
+            Directory *deletable = this;
+
+            for (auto itr = this->sub_directories.begin(); itr != this->sub_directories.end(); itr++)
+            {
+                if (itr->dir_size >= this->deletion_limit)
+                {
+                    if (itr->dir_size < deletable->dir_size)
+                    {
+                        itr->deletion_limit = this->deletion_limit;
+                        deletable = itr.base()->get_delete();
+                    }
+                }
+            }
+
+            return deletable;
         }
 };
 
@@ -250,7 +270,7 @@ int main()
             }
         }
 
-    std::cout << "Curr_dir " << curr_dir->name << std::endl;
+    //std::cout << "Curr_dir " << curr_dir->name << std::endl;
 
     } // For: Line in File END
 
@@ -260,9 +280,12 @@ int main()
     root_dir->list_files();
 
     std::cout << "Total root size: " << root_dir->get_dir_size() << std::endl;
-
-
     std::cout << "Total dir size under 100000k: " << root_dir->get_dir_sum_limited() << std::endl;
+
+    root_dir->deletion_limit = (root_dir->dir_size - (70000000 - 30000000));
+
+    std::cout << "Deletable dir " << root_dir->get_delete()->name << std::endl;
+    std::cout << "Deletable dir " << root_dir->get_delete()->dir_size << std::endl;
 
 
 }
