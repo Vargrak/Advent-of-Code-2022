@@ -8,7 +8,6 @@
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
 
-using namespace std;
 
 class Files
 {
@@ -26,8 +25,12 @@ class Files
 class Directory
 {
     public:
-        std::vector<Directory> parent;
-        int dir_size;
+        Directory *parent;
+        int dir_size = 0;
+        int dir_sum = 0;
+
+        //Set inclusive limit for adding dir size to dir sum
+        int size_limit = 100000;
         std::string name;
         std::vector<Directory> sub_directories;
         std::vector<Files> files;
@@ -44,11 +47,11 @@ class Directory
             this->name = name;
         }
 
-        Directory(std::string name, Directory parent)
+        Directory(std::string name, Directory *parent)
         {
             this->dir_size = 0;
             this->name = name;
-            this->parent.push_back(parent);
+            this->parent = parent;
         }
 
         bool subdirectory_exists(Directory* dir)
@@ -77,12 +80,7 @@ class Directory
 
         void append_dir(std::string name)
         {
-            Directory *temp = new Directory(name, *this);
-            if (!subdirectory_exists(temp))
-            {
-                this->sub_directories.push_back(*temp);
-            }
-    
+                this->sub_directories.push_back(Directory(name, this));
         }
 
         void add_file(std::string file_size, std::string name)
@@ -94,7 +92,7 @@ class Directory
         {
             for (auto itr = this->files.begin(); itr != this->files.end(); itr++)
             {
-                cout << itr->name << std::endl;
+                std::cout << itr->name << std::endl;
             }
         }
 
@@ -102,13 +100,12 @@ class Directory
         {
             for (auto itr = this->sub_directories.begin(); itr != this->sub_directories.end(); itr++)
             {
-                cout << itr->name << std::endl;
+                std::cout << itr->name << std::endl;
             }
         }
 
         int get_dir_size()
         {
-            cout << this->name << std::endl;
             this->dir_size = 0;
             for (auto itr = this->files.begin(); itr != this->files.end(); itr++)
             {
@@ -120,11 +117,23 @@ class Directory
                 this->dir_size += itr->get_dir_size();
             }
 
+            if (this->dir_size <= size_limit)
+            {
+                dir_sum = dir_size;
+            }
 
-
-            if (this->dir_size < 100000)
-                cout << "QUALOODES: " << this->dir_size << std::endl;
             return this->dir_size;
+        }
+
+        //Call this method on root
+        int get_dir_sum_limited()
+        {
+            for (auto itr = this->sub_directories.begin(); itr != this->sub_directories.end(); itr++)
+            {   
+                this->dir_sum += itr->get_dir_sum_limited();
+            }
+
+            return this->dir_sum;
         }
 };
 
@@ -142,20 +151,43 @@ bool dir_flag_enabled(int flag)
     return false;
 }
 
+//Reads off first cd for / to get and set root directory and current directory
+Directory* get_root_dir()
+{
+    std::ifstream input;
+    input.open("Segf.txt");
+
+    std::filesystem::path root_name;
+    std::vector<std::string> split_line;
+    for(std::string line; getline(input, line);)
+    {
+        boost::split(split_line, line, boost::is_any_of(" "), boost::token_compress_on);
+        root_name /= split_line[2];
+        root_name = root_name.lexically_normal();
+        return new Directory(root_name);
+    }
+
+    return new Directory("NULL");
+}
+
 
 int main()
 {
-    ifstream input_text;
+    std::ifstream input_text;
     input_text.open("Segf.txt");
     
-    std::vector<Directory> root;
     std::vector<std::string> split_line;
     std::filesystem::path curr_directory_name;
     
-    Directory *curr_dir;
-    
     int dir_read_flag = 0;
     int root_exists = 0;
+
+    //Set for finding directories with a size less than or equal to this amount
+    int size;
+
+    Directory *curr_dir = get_root_dir();
+    Directory *root_dir = curr_dir;
+
     for(std::string line; getline(input_text, line);)
     {
         boost::split(split_line, line, boost::is_any_of(" "), boost::token_compress_on);
@@ -170,19 +202,10 @@ int main()
                 curr_directory_name /= split_line[2];
                 curr_directory_name = curr_directory_name.lexically_normal();
 
-                //Initial root setup
-                if (root_exists == 0)
-                {
-                    curr_dir = new Directory(curr_directory_name.string());
-                    root.push_back(*curr_dir);
-                    root_exists = 1;
-                }
-
                 //Back up to parent dir
-                else if (split_line[2] == "..")
+                if (split_line[2] == "..")
                 {
-                    if (curr_dir->parent.size() != 0)
-                        *curr_dir = *curr_dir->parent.begin();
+                    curr_dir = curr_dir->parent;
                 }
 
                 //Search subdirs for cd'd name
@@ -192,7 +215,7 @@ int main()
                     {
                         if (itr->name == curr_directory_name.string())
                         {
-                            *curr_dir = *itr;
+                            curr_dir = itr.base();
                             break;
                         }
                     }
@@ -230,8 +253,19 @@ int main()
             }
         }
 
+    std::cout << "Curr_dir " << curr_dir->name << std::endl;
+
     } // For: Line in File END
 
-    
-    root.begin()->list_subdirs();
+    std::cout << "Curr dir name: " << curr_dir->name << std::endl;
+    std::cout << "Root name: "<< root_dir->name << std::endl;
+    root_dir->list_subdirs();
+    root_dir->list_files();
+
+    std::cout << "Total root size: " << root_dir->get_dir_size() << std::endl;
+
+
+    std::cout << "Total dir size under 100000k: " << root_dir->get_dir_sum_limited() << std::endl;
+
+
 }
