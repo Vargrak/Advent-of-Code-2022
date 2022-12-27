@@ -34,19 +34,19 @@ class Path_node
         std::queue<Path_node *> current_level;
         current_level.push(this);
 
-        int i = 0;
         while (true)
         {
-            i++;
             while (current_level.size() > 0)
             {
+                //Get the first node in the current level and remove it from the queue
                 Path_node *node = current_level.front();
                 current_level.pop();
 
                 if (node->goal == true) return node->steps;
                 for (auto connection : node->connections)
                 {
-
+                    //If the connection is not explored, set it to explored and set it's steps to the current node's steps + 1
+                    //Then add it to the next level
                     if (connection->explored == false)
                     {
                         connection->explored = true;
@@ -56,11 +56,13 @@ class Path_node
                 }
             }
 
+            //After current level is empty, end if next_level is empty
+            //Otherwise, set current_level to next_level and clear next_level
             if (next_level.size() == 0) return -1;
             current_level = next_level;
             next_level = std::queue<Path_node *>();
-        }
-    }
+        } // End while (true)
+    } // End steps_to_goal()
 };
 
 //Gets the file with weighted nodes and returns them as a vector of strings so it's 2d parseable
@@ -90,6 +92,8 @@ std::vector<std::vector<Path_node *>> make_node_map(std::vector<std::string> map
         std::vector<Path_node *> temp;
         for (auto point : string)
         {
+            //If the point is a start or end, it's height is set to the first or last index of the key
+            //Char point is passed to constructor to inform it if it's a start or end node
             if (point == 'S') temp.push_back(new Path_node(key.find('a'), x, y, point));
             else if (point == 'E') temp.push_back(new Path_node(key.find('z'), x, y, point));
             else temp.push_back(new Path_node(key.find(point), x, y, point));
@@ -102,6 +106,7 @@ std::vector<std::vector<Path_node *>> make_node_map(std::vector<std::string> map
     return Paths;
 }
 
+//Checks that neighbors are in bounds, not itself, not diagonal and follow height rules (1 higher or any lower)
 bool is_reachable_neighbor(int y_node, int x_node, int y, int x, std::vector<std::vector<Path_node *>> path_map, int max_dif)
 {
     int difference = abs(x_node - x) + abs(y_node - y);
@@ -109,7 +114,7 @@ bool is_reachable_neighbor(int y_node, int x_node, int y, int x, std::vector<std
     //math vector difference less than 2, x and y are in bounds of the map, and the neighbor is not itself.
     if (difference < max_dif && x >= 0 && y >= 0 && x < path_map[y].size() && y < path_map.size() && !(x == x_node && y == y_node))
     {
-        //Must be only 1 higher or lower than current node
+        //Must be only 1 higher or any lower than current node
         if (abs(path_map[y_node][x_node]->height - path_map[y][x]->height) < 2 || path_map[y_node][x_node]->height > path_map[y][x]->height)
         {
             return true;
@@ -118,6 +123,8 @@ bool is_reachable_neighbor(int y_node, int x_node, int y, int x, std::vector<std
     return false;
 }
 
+//x_node and y_node are the current node, x and y are the neighboring node
+//Fills in the connections between the nodes that are created in make_node_map()
 std::vector<std::vector<Path_node *>> get_connections(std::vector<std::vector<Path_node *>> path_map, int max_dif)
 {
     //First two for loops go through path_map's nodes to create a "current node"
@@ -146,10 +153,23 @@ std::vector<std::vector<Path_node *>> get_connections(std::vector<std::vector<Pa
                     }
                 }
             }
-        }
-    }
+        } 
+    } 
 
     return path_map;
+}
+
+//Reset the explored flag and steps for all nodes in the map
+void reset_explored(std::vector<std::vector<Path_node *>> path_map)
+{
+    for (auto row : path_map)
+    {
+        for (auto node : row)
+        {
+            node->steps = 0;
+            node->explored = false;
+        }
+    }
 }
 
 
@@ -158,18 +178,34 @@ int main()
     //                                                                                 SET INPUT VVVVV
     std::vector<std::vector<Path_node *>> path_map = get_connections(make_node_map(get_map_vector("input.txt")), 2);
 
-    //Find starting node, member variable "start" is set to true
+    //Set high min_steps for start comparison
+    int min_steps = 1000000;
+
+    //Start node for part 1
     Path_node *start;
+
+    //Iterate through map to find start node and for all 0 height nodes, find the min steps to goal
     for (auto row : path_map)
     {
         for (auto node : row)
         {
             if (node->start == true) start = node;
+            if (node->height == 0)
+            {
+                int temp = node->steps_to_goal();
+                if (temp < min_steps && temp != -1)
+                { 
+                    min_steps = temp;
+                }
+
+                //Need to reset explored flag and steps counter in each node
+                reset_explored(path_map);
+            }
         }
     }
 
     std::cout << "Steps to goal: " << start->steps_to_goal() << std::endl;
+    std::cout << "Min steps to goal: " << min_steps << std::endl;
+
 
 }
-
-
