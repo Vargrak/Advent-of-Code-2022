@@ -56,7 +56,7 @@ class Map
 
         // For every x along y, check if the range of the sensor to the beacon is greater than or equal to the range of the sensor to the tile
         //Count is incremented if true
-        int get_positions_without_beacons_along_y(int y)
+        int get_positions_in_range_along_y(int y)
         {
             for (int x = this->x_start_; x <= x_size_; x++)
             {
